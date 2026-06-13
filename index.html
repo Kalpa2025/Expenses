@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Expenses">
+<title>Expense Tracker</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --border: #e8e6e0; --border-strong: #d0cdc6;
+    --text: #1a1a18; --muted: #888680; --accent: #1a6ef5; --danger: #c0392b;
+    --danger-bg: #fdf0ef; --radius: 12px; --radius-sm: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 80px; }
+
+  /* AUTH */
+  .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .auth-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 28px 24px; width: 100%; max-width: 380px; }
+  .auth-logo { font-size: 36px; text-align: center; margin-bottom: 6px; }
+  .auth-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  .auth-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 24px; }
+  .auth-tabs { display: flex; background: var(--bg); border-radius: var(--radius-sm); padding: 3px; margin-bottom: 20px; }
+  .auth-tab { flex: 1; text-align: center; padding: 7px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-radius: 7px; }
+  .auth-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .a-field { margin-bottom: 14px; }
+  .a-field label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 5px; }
+  .a-field input { width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 12px; font-size: 15px; font-family: var(--font); color: var(--text); background: var(--bg); outline: none; -webkit-appearance: none; }
+  .a-field input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(26,110,245,0.1); }
+  .auth-btn { width: 100%; padding: 13px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; border: none; font-family: var(--font); background: var(--accent); color: #fff; margin-top: 4px; }
+  .auth-btn:active { opacity: 0.85; }
+  .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .auth-err { font-size: 13px; color: var(--danger); text-align: center; margin-top: 10px; min-height: 18px; }
+  .auth-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+  .auth-divider span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* HEADER */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 16px 10px; position: sticky; top: 0; z-index: 10; }
+  .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .app-title { font-size: 18px; font-weight: 600; }
+  .user-info { display: flex; align-items: center; gap: 8px; }
+  .user-email { font-size: 11px; color: var(--muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .signout-btn { font-size: 11px; color: var(--danger); background: none; border: 1px solid var(--danger); border-radius: 6px; padding: 3px 8px; cursor: pointer; white-space: nowrap; }
+  .month-nav { display: flex; align-items: center; gap: 8px; }
+  .nav-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 17px; }
+  .nav-btn:active { background: var(--border); }
+  .month-label { font-size: 14px; font-weight: 500; min-width: 130px; text-align: center; }
+
+  /* TABS */
+  .tabs { display: flex; padding: 0; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 79px; z-index: 9; }
+  .tab { flex: 1; text-align: center; padding: 9px 4px 10px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* SUMMARY */
+  .summary { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; padding: 12px 16px; }
+  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+  .summary-card.full { grid-column: 1/-1; }
+  .s-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .s-value { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; color: var(--text); }
+
+  /* PM PILLS */
+  .pm-summary { padding: 0 16px 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .pm-pill { font-size: 12px; font-weight: 500; border-radius: 20px; padding: 4px 10px; border: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; gap: 5px; }
+  .pm-pill .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .pm-pill .pm-amt { color: var(--muted); font-size: 11px; }
+
+  /* SECTION */
+  .section-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 6px; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .add-btn { background: var(--accent); color: #fff; border: none; border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .add-btn:active { opacity: 0.85; }
+
+  /* TABLE */
+  .scroll-hint { font-size: 11px; color: var(--muted); text-align: right; padding: 0 16px 4px; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0 16px 16px; }
+  table { width: 100%; min-width: 500px; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); font-size: 13px; }
+  thead th { background: var(--bg); padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  thead th.right { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #fafaf8; }
+  td { padding: 10px 12px; vertical-align: middle; }
+  td.date-cell { white-space: nowrap; color: var(--muted); font-size: 12px; }
+  td.name-cell { font-weight: 500; max-width: 140px; }
+  td.name-cell span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  td.amount-cell { text-align: right; font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 500; border-radius: 5px; padding: 2px 8px; white-space: nowrap; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+  .pm-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; border-radius: 5px; padding: 2px 8px; white-space: nowrap; border: 1px solid transparent; }
+  .pm-badge .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  tfoot { display: none; }
+  tfoot tr td { background: var(--bg); border-top: 2px solid var(--border-strong); padding: 10px 12px; font-weight: 700; font-size: 14px; }
+  tfoot td.right { text-align: right; }
+  .tbl-actions { display: flex; gap: 2px; }
+  .icon-btn { background: none; border: none; cursor: pointer; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .icon-btn:active { background: var(--bg); }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+  /* CHARTS */
+  .chart-section { padding: 0 16px 16px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+  .pie-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .pie-legend { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 8px; }
+  .legend-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .legend-left { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-pct { font-size: 12px; color: var(--muted); }
+  .legend-amt { font-size: 13px; font-weight: 600; }
+  .bar-row { margin-bottom: 10px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .bar-name { font-weight: 500; }
+  .bar-val { color: var(--muted); }
+  .bar-track { background: var(--bg); border-radius: 6px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; }
+
+  /* COMPARE */
+  .compare-section { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .compare-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .compare-title { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+  .yearly-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .year-month-card { background: var(--bg); border-radius: var(--radius-sm); padding: 8px 10px; border: 1.5px solid transparent; }
+  .ym-name { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .ym-val { font-size: 14px; font-weight: 600; }
+  .ym-bar-track { background: var(--border); border-radius: 4px; height: 4px; margin-top: 4px; overflow: hidden; }
+  .ym-bar-fill { height: 100%; border-radius: 4px; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 500px; padding: 20px 20px 44px; transform: translateY(100%); transition: transform 0.25s ease; max-height: 92vh; overflow-y: auto; }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
+  .field { margin-bottom: 14px; }
+  .field label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 5px; }
+  .field input, .field select { width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 15px; font-family: var(--font); color: var(--text); background: var(--bg); outline: none; -webkit-appearance: none; }
+  .field input:focus, .field select:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(26,110,245,0.1); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pm-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+  .pm-option { border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 8px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); background: var(--bg); display: flex; align-items: center; gap: 8px; }
+  .pm-option.selected { border-color: var(--accent); background: #eaf1fb; color: var(--accent); }
+  .pm-option .pm-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .manage-link { font-size: 12px; color: var(--accent); cursor: pointer; display: block; text-align: right; margin-top: 8px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn { flex: 1; padding: 13px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 500; cursor: pointer; border: none; font-family: var(--font); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.primary:active { opacity: 0.85; }
+  .btn.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn.danger { background: var(--danger); color: #fff; }
+  .pm-manage-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .pm-manage-item:last-child { border-bottom: none; }
+  .pm-manage-name { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .pm-del-btn { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 22px; padding: 4px 8px; line-height: 1; }
+  .pm-add-row { display: flex; gap: 8px; margin-top: 12px; }
+  .pm-add-row input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; font-family: var(--font); color: var(--text); background: var(--bg); outline: none; }
+  .pm-add-row button { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: var(--font); }
+  .confirm-box { background: var(--surface); border-radius: var(--radius); padding: 24px 20px; margin: auto 16px; width: calc(100%-32px); max-width: 340px; text-align: center; transform: scale(0.9); transition: transform 0.2s; }
+  .modal-overlay.open .confirm-box { transform: scale(1); }
+  .confirm-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .confirm-msg { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1a1a18; color: #fff; border-radius: 20px; padding: 10px 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: all 0.2s; pointer-events: none; white-space: nowrap; z-index: 200; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .hidden { display: none; }
+  .syncing { font-size: 11px; color: var(--muted); text-align: center; padding: 4px; }
+  .sync-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #27ae60; margin-right: 4px; vertical-align: middle; }
+  .sync-dot.syncing { background: #f39c12; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">💰</div>
+    <div class="auth-title">My Expenses</div>
+    <div class="auth-sub">Track spending across all your devices</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchAuthTab('signin')">Sign in</div>
+      <div class="auth-tab" onclick="switchAuthTab('signup')">Sign up</div>
+    </div>
+    <div class="a-field">
+      <label>Email</label>
+      <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="a-field">
+      <label>Password</label>
+      <input id="auth-password" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="a-field hidden" id="confirmPasswordField">
+      <label>Confirm password</label>
+      <input id="auth-confirm" type="password" placeholder="••••••••">
+    </div>
+    <button class="auth-btn" id="authSubmitBtn" onclick="handleAuth()">Sign in</button>
+    <div class="auth-err" id="authErr"></div>
+    <div class="auth-divider"><span>or</span></div>
+    <button class="auth-btn" style="background:#fff;color:var(--text);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:8px" onclick="handleGoogleAuth()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continue with Google
+    </button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="hidden">
+  <div class="header">
+    <div class="header-row">
+      <span class="app-title">💰 My Expenses</span>
+      <div class="user-info">
+        <span class="user-email" id="userEmailDisplay"></span>
+        <button class="signout-btn" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+    <div class="month-nav">
+      <button class="nav-btn" onclick="changeMonth(-1)">&#8249;</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button class="nav-btn" onclick="changeMonth(1)">&#8250;</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('entries')">Entries</div>
+    <div class="tab" onclick="switchTab('charts')">Charts</div>
+    <div class="tab" onclick="switchTab('compare')">Compare</div>
+  </div>
+
+  <!-- ENTRIES TAB -->
+  <div id="tab-entries">
+    <div class="summary">
+      <div class="summary-card full"><div class="s-label">Total spent</div><div class="s-value" id="s-total">&#8377;0</div></div>
+      <div class="summary-card"><div class="s-label">Entries</div><div class="s-value" id="s-count">0</div></div>
+      <div class="summary-card"><div class="s-label">Daily avg</div><div class="s-value" id="s-avg">&#8377;0</div></div>
+    </div>
+    <div id="pmSummaryWrap" class="pm-summary"></div>
+    <div class="section-header">
+      <span class="section-title" id="entriesLabel">Entries</span>
+      <button class="add-btn" onclick="openAdd()">&#65291; Add</button>
+    </div>
+    <p class="syncing"><span class="sync-dot" id="syncDot"></span><span id="syncStatus">Synced</span></p>
+    <p class="scroll-hint" id="scrollHint" style="display:none">&#8592; swipe to see all columns</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Expense</th><th>Category</th><th>Payment method</th><th class="right">Amount (&#8377;)</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"><tr><td colspan="6"><div class="empty-state">Loading...</div></td></tr></tbody>
+        <tfoot id="tfoot">
+          <tr>
+            <td colspan="3"></td>
+            <td style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;">Total</td>
+            <td class="right" id="f-total">&#8377;0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- CHARTS TAB -->
+  <div id="tab-charts" class="hidden">
+    <div style="padding:12px 16px 8px"><div style="font-size:13px;color:var(--muted)">Spending breakdown — <span id="chartMonthLabel"></span></div></div>
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="chart-title">Payment method breakdown</div>
+        <div id="noChartData" class="empty-state hidden">No data for this month.</div>
+        <div id="chartContent">
+          <div class="pie-wrap">
+            <canvas id="pieChart" width="160" height="160" style="flex-shrink:0"></canvas>
+            <div class="pie-legend" id="pieLegend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="chart-title">Spending by category</div>
+        <div id="noCatData" class="empty-state hidden">No data for this month.</div>
+        <div id="catBars"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARE TAB -->
+  <div id="tab-compare" class="hidden">
+    <div class="compare-section">
+      <div class="compare-card">
+        <div class="compare-title">Last 6 months</div>
+        <div id="monthlyBars"><div class="empty-state">No data yet.</div></div>
+      </div>
+      <div class="compare-card">
+        <div class="compare-title" id="yearlyTitle">This year</div>
+        <div id="yearlyGrid"><div class="empty-state">No data yet.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="formModal">
+  <div class="modal">
+    <div class="modal-title" id="formTitle">Add expense</div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input id="f-date" type="date"></div>
+      <div class="field"><label>Amount (&#8377;)</label><input id="f-amount" type="number" placeholder="0" inputmode="decimal"></div>
+    </div>
+    <div class="field"><label>Expense name</label><input id="f-name" type="text" placeholder="e.g. Fuel, Groceries, Dinner"></div>
+    <div class="field">
+      <label>Category</label>
+      <select id="f-cat">
+        <option>Food</option><option>Grocery</option><option>Fuel</option><option>Travel</option>
+        <option>Bills</option><option>Shopping</option><option>Health</option>
+        <option>Entertainment</option><option>Education</option><option>Other</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Payment method</label>
+      <div class="pm-grid" id="pmGrid"></div>
+      <span class="manage-link" onclick="openManagePM()">+ Add / manage payment methods</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeForm()">Cancel</button>
+      <button class="btn primary" id="saveBtn" onclick="saveEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage PMs Modal -->
+<div class="modal-overlay" id="managePMModal">
+  <div class="modal">
+    <div class="modal-title">Payment methods</div>
+    <div id="pmManageList"></div>
+    <div class="pm-add-row">
+      <input id="newPMInput" type="text" placeholder="e.g. ICICI CC, Amazon Pay">
+      <button onclick="addCustomPM()">Add</button>
+    </div>
+    <div class="modal-actions" style="margin-top:20px"><button class="btn secondary" onclick="closeManagePM()">Done</button></div>
+  </div>
+</div>
+
+<!-- Confirm Delete -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-box">
+    <div class="confirm-title">Delete entry?</div>
+    <div class="confirm-msg">This will permanently remove this expense.</div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeConfirm()">Cancel</button>
+      <button class="btn danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== CONFIG =====================
+var SUPABASE_URL = 'https://qkdoiaosfplnzpnkjona.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrZG9pYW9zZnBsbnpwbmtqb25hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyODU3MjYsImV4cCI6MjA5Njg2MTcyNn0.Upi53AltHitPrdwU1AY-FSz0vvpiuQvAw_TO7jK33Vs';
+
+// ===================== CONSTANTS =====================
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var PM_KEY = 'exp_pm_v5';
+var DEFAULT_PMS = [
+  {id:'sbi_cc', name:'SBI CC',  color:'#22577a'},
+  {id:'hdfc_cc',name:'HDFC CC', color:'#004c8f'},
+  {id:'gpay',   name:'GPay',    color:'#1a73e8'},
+  {id:'cash',   name:'Cash',    color:'#27ae60'}
+];
+var CAT_COLORS = ['#1a6ef5','#e74c3c','#27ae60','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#e91e63','#607d8b'];
+
+// ===================== STATE =====================
+var now = new Date();
+var curYear = now.getFullYear();
+var curMonth = now.getMonth();
+var editingId = null;
+var deletingId = null;
+var selectedPM = 'sbi_cc';
+var activeTab = 'entries';
+var currentUser = null;
+var allEntries = [];
+var authMode = 'signin';
+
+// ===================== HELPERS =====================
+function fmt(n){return '\u20B9'+Math.round(n).toLocaleString('en-IN');}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function getPMs(){try{var s=localStorage.getItem(PM_KEY);return s?JSON.parse(s):DEFAULT_PMS.slice();}catch(e){return DEFAULT_PMS.slice();}}
+function savePMs(l){try{localStorage.setItem(PM_KEY,JSON.stringify(l));}catch(e){}}
+function pmById(id){var pms=getPMs();for(var i=0;i<pms.length;i++){if(pms[i].id===id)return pms[i];}return{id:id,name:id,color:'#888'};}
+function setSyncStatus(status){
+  var dot=document.getElementById('syncDot'), txt=document.getElementById('syncStatus');
+  if(status==='syncing'){dot.className='sync-dot syncing';txt.textContent='Syncing...';}
+  else{dot.className='sync-dot';txt.textContent='Synced';}
+}
+
+// ===================== SUPABASE API =====================
+function sbFetch(path, method, body){
+  var m = method||'GET';
+  var headers = {
+    'Content-Type':'application/json',
+    'apikey':SUPABASE_KEY,
+    'Authorization':'Bearer '+(currentUser?currentUser.access_token:SUPABASE_KEY),
+    'Prefer':'return=minimal'
+  };
+  var opts = {method:m, headers:headers};
+  if(body) opts.body = JSON.stringify(body);
+  return fetch(SUPABASE_URL+path, opts).then(function(r){
+    if(r.status===204||r.status===201||r.status===200){
+      var ct = r.headers.get('content-type')||'';
+      if(ct.indexOf('application/json')>-1){
+        return r.text().then(function(t){ return t ? JSON.parse(t) : {ok:true}; });
+      }
+      return {ok:true};
+    }
+    return r.json().then(function(data){ throw data; });
+  });
+}
+
+function loadEntries(){
+  if(!currentUser) return;
+  setSyncStatus('syncing');
+  // GET needs to return full JSON so use a direct fetch without Prefer:return=minimal
+  fetch(SUPABASE_URL+'/rest/v1/expenses?select=*&order=date.desc&user_id=eq.'+currentUser.id, {
+    headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+currentUser.access_token,'Content-Type':'application/json'}
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    allEntries = Array.isArray(data) ? data : [];
+    setSyncStatus('synced');
+    render();
+  }, function(){setSyncStatus('synced');});
+}
+
+function insertEntry(entry){
+  return sbFetch('/rest/v1/expenses','POST',{
+    user_id: currentUser.id,
+    name: entry.name,
+    date: entry.date,
+    amount: parseFloat(entry.amount),
+    category: entry.cat,
+    payment_method: entry.pm
+  });
+}
+
+function updateEntry(id, entry){
+  return sbFetch('/rest/v1/expenses?id=eq.'+id,'PATCH',{
+    name: entry.name,
+    date: entry.date,
+    amount: parseFloat(entry.amount),
+    category: entry.cat,
+    payment_method: entry.pm
+  });
+}
+
+function deleteEntry(id){
+  return sbFetch('/rest/v1/expenses?id=eq.'+id,'DELETE');
+}
+
+// ===================== AUTH =====================
+function switchAuthTab(mode){
+  authMode = mode;
+  var tabs = document.querySelectorAll('.auth-tab');
+  tabs[0].classList.toggle('active', mode==='signin');
+  tabs[1].classList.toggle('active', mode==='signup');
+  document.getElementById('authSubmitBtn').textContent = mode==='signin'?'Sign in':'Create account';
+  document.getElementById('confirmPasswordField').classList.toggle('hidden', mode==='signin');
+  document.getElementById('authErr').textContent='';
+}
+
+function handleAuth(){
+  var email = document.getElementById('auth-email').value.trim();
+  var password = document.getElementById('auth-password').value;
+  var confirm = document.getElementById('auth-confirm').value;
+  var btn = document.getElementById('authSubmitBtn');
+  if(!email||!password){setAuthErr('Please enter email and password.');return;}
+  if(authMode==='signup'){
+    if(password.length<6){setAuthErr('Password must be at least 6 characters.');return;}
+    if(password!==confirm){setAuthErr('Passwords do not match.');return;}
+  }
+  btn.disabled=true; btn.textContent='Please wait...';
+  var endpoint = authMode==='signup'?'/auth/v1/signup':'/auth/v1/token?grant_type=password';
+  fetch(SUPABASE_URL+endpoint,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify({email:email,password:password})})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    btn.disabled=false; btn.textContent=authMode==='signin'?'Sign in':'Create account';
+    if(data.error||data.error_description||data.msg){
+      setAuthErr(data.error_description||data.msg||data.error||'Authentication failed.');
+      return;
+    }
+    if(authMode==='signup'&&!data.access_token){
+      setAuthErr('Account created! Please check your email to confirm, then sign in.');
+      switchAuthTab('signin'); return;
+    }
+    onAuthSuccess(data);
+  }).catch(function(){
+    btn.disabled=false; btn.textContent=authMode==='signin'?'Sign in':'Create account';
+    setAuthErr('Network error. Please try again.');
+  });
+}
+
+function handleGoogleAuth(){
+  fetch(SUPABASE_URL+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(window.location.href),{headers:{'apikey':SUPABASE_KEY}})
+  .then(function(r){if(r.url)window.location.href=r.url;})
+  .catch(function(){
+    var url=SUPABASE_URL+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(window.location.href);
+    window.location.href=url;
+  });
+}
+
+function setAuthErr(msg){document.getElementById('authErr').textContent=msg;}
+
+function onAuthSuccess(data){
+  currentUser={id:data.user.id, email:data.user.email, access_token:data.access_token};
+  try{localStorage.setItem('exp_session',JSON.stringify(currentUser));}catch(e){}
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+  document.getElementById('userEmailDisplay').textContent=currentUser.email;
+  loadEntries();
+}
+
+function signOut(){
+  currentUser=null; allEntries=[];
+  try{localStorage.removeItem('exp_session');}catch(e){}
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+
+function checkSession(){
+  // Check for OAuth redirect
+  var hash = window.location.hash;
+  if(hash&&hash.includes('access_token')){
+    var params={};
+    hash.slice(1).split('&').forEach(function(p){var kv=p.split('=');params[kv[0]]=decodeURIComponent(kv[1]||'');});
+    if(params.access_token){
+      fetch(SUPABASE_URL+'/auth/v1/user',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+params.access_token}})
+      .then(function(r){return r.json();})
+      .then(function(user){
+        if(user.id){onAuthSuccess({user:user,access_token:params.access_token});history.replaceState(null,'',window.location.pathname);}
+      });
+      return;
+    }
+  }
+  // Check stored session
+  try{
+    var s=localStorage.getItem('exp_session');
+    if(s){
+      var sess=JSON.parse(s);
+      // Verify token is still valid
+      fetch(SUPABASE_URL+'/auth/v1/user',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+sess.access_token}})
+      .then(function(r){return r.json();})
+      .then(function(user){
+        if(user.id){currentUser=sess;document.getElementById('authScreen').classList.add('hidden');document.getElementById('mainApp').classList.remove('hidden');document.getElementById('userEmailDisplay').textContent=currentUser.email;loadEntries();}
+        else{localStorage.removeItem('exp_session');}
+      }).catch(function(){});
+    }
+  }catch(e){}
+}
+
+// ===================== TABS =====================
+function switchTab(tab){
+  activeTab=tab;
+  ['entries','charts','compare'].forEach(function(t,i){
+    document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab);
+    document.querySelectorAll('.tab')[i].classList.toggle('active',t===tab);
+  });
+  if(tab==='charts')renderCharts();
+  if(tab==='compare')renderCompare();
+}
+
+function changeMonth(dir){
+  curMonth+=dir;
+  if(curMonth<0){curMonth=11;curYear--;}
+  if(curMonth>11){curMonth=0;curYear++;}
+  render();
+}
+
+// ===================== RENDER =====================
+function getMonthEntries(){
+  // Compare date strings directly (YYYY-MM-DD) to avoid timezone shift bugs
+  var yStr = String(curYear);
+  var mStr = String(curMonth+1).padStart(2,'0');
+  var prefix = yStr+'-'+mStr+'-';
+  return allEntries.filter(function(e){
+    return e.date && e.date.indexOf(prefix)===0;
+  });
+}
+
+function render(){
+  document.getElementById('monthLabel').textContent=MONTHS[curMonth]+' '+curYear;
+  document.getElementById('chartMonthLabel').textContent=MONTHS[curMonth]+' '+curYear;
+  var entries=getMonthEntries();
+  var total=0, pmTotals={};
+  entries.forEach(function(e){
+    var v=parseFloat(e.amount)||0; total+=v;
+    var pmid=e.payment_method||'';
+    pmTotals[pmid]=(pmTotals[pmid]||0)+v;
+  });
+  document.getElementById('s-total').textContent=fmt(total);
+  document.getElementById('s-count').textContent=entries.length;
+  var days=new Date(curYear,curMonth+1,0).getDate();
+  document.getElementById('s-avg').textContent=fmt(entries.length?total/days:0);
+  var pillsHTML='';
+  Object.keys(pmTotals).forEach(function(pid){
+    var pm=pmById(pid);
+    pillsHTML+='<div class="pm-pill"><span class="dot" style="background:'+pm.color+'"></span>'+esc(pm.name)+' <span class="pm-amt">'+fmt(pmTotals[pid])+'</span></div>';
+  });
+  document.getElementById('pmSummaryWrap').innerHTML=pillsHTML;
+  document.getElementById('entriesLabel').textContent=entries.length+(entries.length===1?' Entry':' Entries');
+  document.getElementById('scrollHint').style.display=entries.length?'block':'none';
+  var tfoot=document.getElementById('tfoot'), tbody=document.getElementById('tbody');
+  if(entries.length===0){
+    tbody.innerHTML='<tr><td colspan="6"><div class="empty-state">No expenses this month.<br>Tap + Add to get started.</div></td></tr>';
+    tfoot.style.display='none'; return;
+  }
+  tfoot.style.display='';
+  document.getElementById('f-total').textContent=fmt(total);
+  var sorted=entries.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+  var rows='';
+  sorted.forEach(function(e){
+    var pm=pmById(e.payment_method||'');
+    var d=e.date?new Date(e.date+'T00:00:00'):null;
+    var ds=d?d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'—';
+    rows+='<tr>'+
+      '<td class="date-cell">'+ds+'</td>'+
+      '<td class="name-cell"><span title="'+esc(e.name)+'">'+esc(e.name||'—')+'</span></td>'+
+      '<td><span class="badge">'+esc(e.category||'')+'</span></td>'+
+      '<td><span class="pm-badge" style="background:'+pm.color+'18;color:'+pm.color+';border-color:'+pm.color+'44">'+
+        '<span class="dot" style="background:'+pm.color+'"></span>'+esc(pm.name)+
+      '</span></td>'+
+      '<td class="amount-cell">'+fmt(parseFloat(e.amount)||0)+'</td>'+
+      '<td><div class="tbl-actions">'+
+        '<button class="icon-btn" onclick="openEdit(\''+e.id+'\')">&#9999;&#65039;</button>'+
+        '<button class="icon-btn" onclick="openDelete(\''+e.id+'\')">&#128465;&#65039;</button>'+
+      '</div></td>'+
+    '</tr>';
+  });
+  tbody.innerHTML=rows;
+  if(activeTab==='charts')renderCharts();
+  if(activeTab==='compare')renderCompare();
+}
+
+// ===================== CHARTS =====================
+function renderCharts(){
+  var entries=getMonthEntries();
+  var pmTotals={}, catTotals={}, total=0;
+  entries.forEach(function(e){
+    var v=parseFloat(e.amount)||0; total+=v;
+    var pid=e.payment_method||'other';
+    pmTotals[pid]=(pmTotals[pid]||0)+v;
+    var cat=e.category||'Other';
+    catTotals[cat]=(catTotals[cat]||0)+v;
+  });
+  var noChart=document.getElementById('noChartData'), chartContent=document.getElementById('chartContent');
+  var noCat=document.getElementById('noCatData'), catBars=document.getElementById('catBars');
+  if(total===0){
+    noChart.classList.remove('hidden');chartContent.classList.add('hidden');
+    noCat.classList.remove('hidden');catBars.innerHTML='';return;
+  }
+  noChart.classList.add('hidden');chartContent.classList.remove('hidden');noCat.classList.add('hidden');
+  var canvas=document.getElementById('pieChart'),ctx=canvas.getContext('2d');
+  var cx=80,cy=80,r=70,gap=0.04;
+  ctx.clearRect(0,0,160,160);
+  var pmKeys=Object.keys(pmTotals), sa=-Math.PI/2;
+  pmKeys.forEach(function(pid){
+    var pm=pmById(pid), slice=(pmTotals[pid]/total)*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,sa+gap/2,sa+slice-gap/2);ctx.closePath();ctx.fillStyle=pm.color;ctx.fill();
+    sa+=slice;
+  });
+  ctx.beginPath();ctx.arc(cx,cy,36,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  ctx.fillStyle='#1a1a18';ctx.font='bold 12px -apple-system,sans-serif';ctx.textAlign='center';
+  ctx.fillText(fmt(total),cx,cy-3);
+  ctx.font='10px -apple-system,sans-serif';ctx.fillStyle='#888';ctx.fillText('total',cx,cy+11);
+  var legendHTML='';
+  pmKeys.forEach(function(pid){
+    var pm=pmById(pid),pct=Math.round((pmTotals[pid]/total)*100);
+    legendHTML+='<div class="legend-item">'+
+      '<div class="legend-left"><span class="legend-dot" style="background:'+pm.color+'"></span>'+esc(pm.name)+'</div>'+
+      '<div style="text-align:right"><div class="legend-amt">'+fmt(pmTotals[pid])+'</div><div class="legend-pct">'+pct+'%</div></div>'+
+    '</div>';
+  });
+  document.getElementById('pieLegend').innerHTML=legendHTML;
+  var catKeys=Object.keys(catTotals).sort(function(a,b){return catTotals[b]-catTotals[a];});
+  var maxCat=catKeys.length?catTotals[catKeys[0]]:1;
+  var catHTML='';
+  catKeys.forEach(function(cat,i){
+    var pct=Math.round((catTotals[cat]/maxCat)*100);
+    catHTML+='<div class="bar-row">'+
+      '<div class="bar-label"><span class="bar-name">'+esc(cat)+'</span><span class="bar-val">'+fmt(catTotals[cat])+'</span></div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+CAT_COLORS[i%CAT_COLORS.length]+'"></div></div>'+
+    '</div>';
+  });
+  catBars.innerHTML=catHTML;
+}
+
+// ===================== COMPARE =====================
+function getMonthTotal(y,m){
+  var t=0;
+  allEntries.forEach(function(e){
+    if(!e.date)return;
+    var d=new Date(e.date+'T00:00:00');
+    if(d.getFullYear()===y&&d.getMonth()===m)t+=parseFloat(e.amount)||0;
+  });
+  return t;
+}
+
+function renderCompare(){
+  var months=[],maxVal=1;
+  for(var i=5;i>=0;i--){
+    var m=curMonth-i,y=curYear;
+    while(m<0){m+=12;y--;}
+    var total=getMonthTotal(y,m);
+    months.push({label:MONTHS_SHORT[m]+' '+String(y).slice(2),total:total,isCurrent:m===curMonth&&y===curYear});
+    if(total>maxVal)maxVal=total;
+  }
+  var mbHTML='';
+  months.forEach(function(mo){
+    var pct=Math.round((mo.total/maxVal)*100)||0;
+    mbHTML+='<div class="bar-row">'+
+      '<div class="bar-label">'+
+        '<span class="bar-name" style="'+(mo.isCurrent?'color:var(--accent);font-weight:600':'')+'">'+mo.label+(mo.isCurrent?' ●':'')+'</span>'+
+        '<span class="bar-val">'+fmt(mo.total)+'</span>'+
+      '</div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+(mo.isCurrent?'var(--accent)':'#94b4e8')+'"></div></div>'+
+    '</div>';
+  });
+  document.getElementById('monthlyBars').innerHTML=mbHTML||'<div class="empty-state">No data yet.</div>';
+  document.getElementById('yearlyTitle').textContent=curYear+' — month by month';
+  var ygHTML='',maxY=1;
+  var yearTotals=[];
+  for(var m2=0;m2<12;m2++){yearTotals.push(getMonthTotal(curYear,m2));if(yearTotals[m2]>maxY)maxY=yearTotals[m2];}
+  for(var p=0;p<12;p++){
+    var tot=yearTotals[p],isCur=p===curMonth&&curYear===now.getFullYear();
+    var pct2=Math.round((tot/maxY)*100)||0;
+    ygHTML+='<div class="year-month-card" style="'+(isCur?'border-color:var(--accent)':'')+'">'+
+      '<div class="ym-name">'+MONTHS_SHORT[p]+'</div>'+
+      '<div class="ym-val">'+fmt(tot)+'</div>'+
+      '<div class="ym-bar-track"><div class="ym-bar-fill" style="width:'+pct2+'%;background:'+(isCur?'var(--accent)':'#94b4e8')+'"></div></div>'+
+    '</div>';
+  }
+  document.getElementById('yearlyGrid').innerHTML=ygHTML;
+}
+
+// ===================== PM GRID =====================
+function renderPMGrid(selected){
+  var pms=getPMs(),html='';
+  pms.forEach(function(p){
+    html+='<div class="pm-option'+(selected===p.id?' selected':'')+'" onclick="selectPM(\''+p.id+'\')">'+
+      '<span class="pm-dot" style="background:'+p.color+'"></span>'+esc(p.name)+'</div>';
+  });
+  document.getElementById('pmGrid').innerHTML=html;
+}
+function selectPM(id){selectedPM=id;renderPMGrid(id);}
+
+// ===================== FORM =====================
+function openAdd(){
+  editingId=null;
+  var pms=getPMs();selectedPM=pms.length?pms[0].id:'';
+  document.getElementById('formTitle').textContent='Add expense';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-date').value=todayStr();
+  document.getElementById('f-amount').value='';
+  document.getElementById('f-cat').value='Food';
+  renderPMGrid(selectedPM);
+  document.getElementById('formModal').classList.add('open');
+}
+function openEdit(id){
+  var e=allEntries.find(function(x){return x.id===id;});
+  if(!e)return;
+  editingId=id;selectedPM=e.payment_method||'';
+  document.getElementById('formTitle').textContent='Edit expense';
+  document.getElementById('f-name').value=e.name||'';
+  document.getElementById('f-date').value=e.date||todayStr();
+  document.getElementById('f-amount').value=e.amount||'';
+  document.getElementById('f-cat').value=e.category||'Food';
+  renderPMGrid(selectedPM);
+  document.getElementById('formModal').classList.add('open');
+}
+function closeForm(){document.getElementById('formModal').classList.remove('open');}
+
+function saveEntry(){
+  var name=document.getElementById('f-name').value.trim();
+  var date=document.getElementById('f-date').value;
+  var amount=document.getElementById('f-amount').value;
+  var cat=document.getElementById('f-cat').value;
+  var pm=selectedPM;
+  if(!name){document.getElementById('f-name').focus();showToast('Enter expense name');return;}
+  if(!amount||parseFloat(amount)<=0){document.getElementById('f-amount').focus();showToast('Enter a valid amount');return;}
+  if(!pm){showToast('Select a payment method');return;}
+  var btn=document.getElementById('saveBtn');btn.disabled=true;btn.textContent='Saving...';
+  setSyncStatus('syncing');
+  var entry={name:name,date:date,amount:amount,cat:cat,pm:pm};
+  var isEdit = !!editingId;
+  var promise = isEdit ? updateEntry(editingId,entry) : insertEntry(entry);
+  promise.then(function(){
+    btn.disabled=false; btn.textContent='Save';
+    closeForm(); showToast(isEdit?'Expense updated':'Expense added');
+    loadEntries();
+  }, function(err){
+    btn.disabled=false; btn.textContent='Save';
+    console.error('Save error:', JSON.stringify(err));
+    showToast('Error: '+(err&&err.message?err.message:'Please try again.'));
+    setSyncStatus('synced');
+  });
+}
+
+// ===================== DELETE =====================
+function openDelete(id){deletingId=id;document.getElementById('confirmModal').classList.add('open');}
+function closeConfirm(){document.getElementById('confirmModal').classList.remove('open');deletingId=null;}
+function confirmDelete(){
+  if(!deletingId)return;
+  setSyncStatus('syncing');
+  var delId = deletingId;
+  deleteEntry(delId).then(function(){
+    closeConfirm(); showToast('Entry deleted'); loadEntries();
+  }, function(err){
+    console.error('Delete error:', JSON.stringify(err));
+    showToast('Error deleting. Please try again.'); setSyncStatus('synced');
+  });
+}
+
+// ===================== MANAGE PMs =====================
+function openManagePM(){renderManageList();document.getElementById('managePMModal').classList.add('open');}
+function closeManagePM(){document.getElementById('managePMModal').classList.remove('open');renderPMGrid(selectedPM);}
+function renderManageList(){
+  var pms=getPMs(),html='';
+  pms.forEach(function(p){
+    html+='<div class="pm-manage-item">'+
+      '<div class="pm-manage-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+p.color+';margin-right:4px"></span>'+esc(p.name)+'</div>'+
+      '<button class="pm-del-btn" onclick="deletePM(\''+p.id+'\')">&times;</button>'+
+    '</div>';
+  });
+  document.getElementById('pmManageList').innerHTML=html;
+}
+function addCustomPM(){
+  var input=document.getElementById('newPMInput'),name=input.value.trim();
+  if(!name)return;
+  var pms=getPMs();
+  var colors=['#e74c3c','#3498db','#2ecc71','#9b59b6','#e67e22','#1abc9c','#34495e','#f39c12'];
+  var id=name.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now();
+  pms.push({id:id,name:name,color:colors[pms.length%colors.length]});
+  savePMs(pms);input.value='';renderManageList();showToast(name+' added');
+}
+function deletePM(id){savePMs(getPMs().filter(function(p){return p.id!==id;}));renderManageList();}
+
+// ===================== TOAST =====================
+function showToast(msg){
+  var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2000);
+}
+
+// ===================== MODAL CLOSE ON BG =====================
+['formModal','managePMModal'].forEach(function(id){
+  document.getElementById(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+});
+document.getElementById('confirmModal').addEventListener('click',function(e){if(e.target===this)closeConfirm();});
+
+// ===================== INIT =====================
+checkSession();
+</script>
+</body>
+</html>
